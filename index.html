@@ -352,6 +352,23 @@ export default function RobloxLogDashboard() {
                   )}
                 </div>
 
+                {/* NEU: Liste aller verknüpften User IDs */}
+                <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
+                  <h3 className="text-xl font-bold mb-4">
+                    Verknüpfte User IDs
+                  </h3>
+                  <ul className="space-y-2">
+                    <li className="bg-zinc-900 rounded-xl p-3 border border-zinc-700 font-semibold">
+                      Main Account: {selectedUser.userId}
+                    </li>
+                    {getAltAccounts(selectedUser).map((alt, idx) => (
+                      <li key={idx} className="bg-zinc-900 rounded-xl p-3 border border-zinc-700">
+                        {alt.userId}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 <div className="bg-zinc-800 rounded-3xl p-5">
                   <h3 className="text-xl font-bold mb-4">
                     Raw JSON
