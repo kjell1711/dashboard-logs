@@ -1,406 +1,350 @@
-import React, { useState, useMemo } from "react";
-import JSZip from "jszip";
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roblox Execute Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-black text-white">
+  <div id="root"></div>
 
-export default function RobloxLogDashboard() {
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- JSZip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Babel für JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  const [logs, setLogs] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ totalFiles: 0, uniqueUsers: 0 });
+  <script type="text/babel">
+    const { useState, useMemo } = React;
 
-  const processJsonFiles = async (jsonFiles) => {
-    setLoading(true);
+    function RobloxLogDashboard() {
+      const [logs, setLogs] = useState([]);
+      const [selectedUser, setSelectedUser] = useState(null);
+      const [search, setSearch] = useState("");
+      const [loading, setLoading] = useState(false);
+      const [stats, setStats] = useState({ totalFiles: 0, uniqueUsers: 0 });
 
-    const usersMap = new Map();
+      const processJsonFiles = async (jsonFiles) => {
+        setLoading(true);
+        const usersMap = new Map();
 
-    for (const fileContent of jsonFiles) {
-      try {
-        const json = typeof fileContent === 'string'
-          ? JSON.parse(fileContent)
-          : fileContent;
+        for (const fileContent of jsonFiles) {
+          try {
+            const json = typeof fileContent === 'string'
+              ? JSON.parse(fileContent)
+              : fileContent;
 
-        const username = json.username || 'Unknown';
-        const userId = json.user_id || 'Unknown';
-        const uniqueKey = `${username}_${userId}`;
+            const username = json.username || 'Unknown';
+            const userId = json.user_id || 'Unknown';
+            const uniqueKey = `${username}_${userId}`;
 
-        if (!usersMap.has(uniqueKey)) {
-          usersMap.set(uniqueKey, {
-            username,
-            displayName: json.display_name || username,
-            userId,
-            avatarUrl: json.avatar_url || '',
-            country: json.country || 'Unknown',
-            countryCode: json.country_code || '??',
-            profileUrl: json.profile_url || '',
-            ips: new Set(),
-            clientIds: new Set(),
-            gameIds: new Set(),
-            scripts: new Set(),
-            rawLogs: [],
-            execCount: 0,
-            timestamps: [],
-          });
-        }
+            if (!usersMap.has(uniqueKey)) {
+              usersMap.set(uniqueKey, {
+                username,
+                displayName: json.display_name || username,
+                userId,
+                avatarUrl: json.avatar_url || '',
+                country: json.country || 'Unknown',
+                countryCode: json.country_code || '??',
+                profileUrl: json.profile_url || '',
+                ips: new Set(),
+                clientIds: new Set(),
+                gameIds: new Set(),
+                scripts: new Set(),
+                rawLogs: [],
+                execCount: 0,
+                timestamps: [],
+              });
+            }
 
-        const user = usersMap.get(uniqueKey);
-
-        if (json.ip) user.ips.add(json.ip);
-        if (json.client_id) user.clientIds.add(json.client_id);
-        if (json.game_id) user.gameIds.add(json.game_id);
-        if (json.script_name) user.scripts.add(json.script_name);
-
-        user.execCount += Number(json.exec_count || 1);
-
-        if (json.timestamp) {
-          user.timestamps.push(json.timestamp);
-        }
-
-        user.rawLogs.push(json);
-      } catch (err) {
-        console.error('Failed parsing JSON', err);
-      }
-    }
-
-    const finalLogs = Array.from(usersMap.values()).map((user) => ({
-      ...user,
-      ips: Array.from(user.ips),
-      clientIds: Array.from(user.clientIds),
-      gameIds: Array.from(user.gameIds),
-      scripts: Array.from(user.scripts),
-      lastSeen:
-        user.timestamps.length > 0
-          ? new Date(Math.max(...user.timestamps) * 1000).toLocaleString()
-          : 'Unknown',
-    }));
-
-    finalLogs.sort((a, b) => b.execCount - a.execCount);
-
-    setStats({
-      totalFiles: jsonFiles.length,
-      uniqueUsers: finalLogs.length,
-    });
-
-    setLogs(finalLogs);
-    setLoading(false);
-  };
-
-  
-
-  const handleFolderUpload = async (event) => {
-    const uploadedFiles = Array.from(event.target.files || []);
-    const jsonFiles = [];
-
-    for (const file of uploadedFiles) {
-      try {
-        if (file.name.endsWith('.zip')) {
-          const zip = await JSZip.loadAsync(file);
-
-          for (const filename of Object.keys(zip.files)) {
-            if (!filename.endsWith('.json')) continue;
-
-            const text = await zip.files[filename].async('string');
-            jsonFiles.push(text);
+            const user = usersMap.get(uniqueKey);
+            if (json.ip) user.ips.add(json.ip);
+            if (json.client_id) user.clientIds.add(json.client_id);
+            if (json.game_id) user.gameIds.add(json.game_id);
+            if (json.script_name) user.scripts.add(json.script_name);
+            user.execCount += Number(json.exec_count || 1);
+            if (json.timestamp) user.timestamps.push(json.timestamp);
+            user.rawLogs.push(json);
+          } catch (err) {
+            console.error('Failed parsing JSON', err);
           }
         }
 
-        if (file.name.endsWith('.json')) {
-          const text = await file.text();
-          jsonFiles.push(text);
+        const finalLogs = Array.from(usersMap.values()).map((user) => ({
+          ...user,
+          ips: Array.from(user.ips),
+          clientIds: Array.from(user.clientIds),
+          gameIds: Array.from(user.gameIds),
+          scripts: Array.from(user.scripts),
+          lastSeen:
+            user.timestamps.length > 0
+              ? new Date(Math.max(...user.timestamps) * 1000).toLocaleString()
+              : 'Unknown',
+        }));
+
+        finalLogs.sort((a, b) => b.execCount - a.execCount);
+        setStats({ totalFiles: jsonFiles.length, uniqueUsers: finalLogs.length });
+        setLogs(finalLogs);
+        setLoading(false);
+      };
+
+      const handleFolderUpload = async (event) => {
+        const uploadedFiles = Array.from(event.target.files || []);
+        const jsonFiles = [];
+
+        for (const file of uploadedFiles) {
+          try {
+            if (file.name.endsWith('.zip')) {
+              const zip = await JSZip.loadAsync(file);
+              for (const filename of Object.keys(zip.files)) {
+                if (!filename.endsWith('.json')) continue;
+                const text = await zip.files[filename].async('string');
+                jsonFiles.push(text);
+              }
+            }
+            if (file.name.endsWith('.json')) {
+              const text = await file.text();
+              jsonFiles.push(text);
+            }
+          } catch (err) {
+            console.error('Failed reading upload', err);
+          }
         }
-      } catch (err) {
-        console.error('Failed reading upload', err);
-      }
-    }
+        await processJsonFiles(jsonFiles);
+      };
 
-    await processJsonFiles(jsonFiles);
-  };
+      const filteredLogs = useMemo(() => {
+        return logs.filter((log) => {
+          const s = search.toLowerCase();
+          return (
+            String(log.username).toLowerCase().includes(s) ||
+            String(log.displayName).toLowerCase().includes(s) ||
+            String(log.userId).toLowerCase().includes(s) ||
+            String(log.ips.join(' ')).toLowerCase().includes(s)
+          );
+        });
+      }, [logs, search]);
 
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const searchText = search.toLowerCase();
+      const getAltAccounts = (currentUser) => {
+        if (!currentUser) return [];
+        return logs.filter((user) =>
+          user.userId !== currentUser.userId &&
+          user.ips.some((ip) => currentUser.ips.includes(ip))
+        );
+      };
 
       return (
-        String(log.username).toLowerCase().includes(searchText) ||
-        String(log.displayName).toLowerCase().includes(searchText) ||
-        String(log.userId).toLowerCase().includes(searchText) ||
-        String(log.ips.join(' ')).toLowerCase().includes(searchText)
-      );
-    });
-  }, [logs, search]);
-
-  const getAltAccounts = (currentUser) => {
-    if (!currentUser) return [];
-
-    return logs.filter((user) => {
-      if (user.userId === currentUser.userId) return false;
-
-      return user.ips.some((ip) => currentUser.ips.includes(ip));
-    });
-  };
-
-  return (
-    <div className="min-h-screen bg-black text-white p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <div>
-            <h1 className="text-4xl font-bold">Roblox Execute Dashboard</h1>
-            <p className="text-zinc-400 mt-1">
-              JSON Logs durchsuchen und Nutzer verwalten
-            </p>
-          </div>
-
-          <label className="bg-white text-black px-5 py-3 rounded-2xl cursor-pointer font-semibold hover:scale-105 transition">
-            ZIP oder Ordner hochladen
-            <input
-              type="file"
-              accept=".json,.zip"
-              webkitdirectory="true"
-              multiple
-              className="hidden"
-              onChange={handleFolderUpload}
-            />
-          </label>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <StatCard title="Geladene Dateien" value={stats.totalFiles} />
-          <StatCard title="Eindeutige Nutzer" value={stats.uniqueUsers} />
-          <StatCard title="Logs insgesamt" value={logs.reduce((acc, log) => acc + log.rawLogs.length, 0)} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
-          <div className="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-zinc-800">
-              <input
-                type="text"
-                placeholder="Nach Username, UserID oder IP suchen..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 outline-none"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-              {loading && (
-                <div className="p-6 text-zinc-400">
-                  Dateien werden geladen...
-                </div>
-              )}
-
-              {!loading && filteredLogs.length === 0 && (
-                <div className="p-6 text-zinc-500">
-                  Keine Logs gefunden.
-                </div>
-              )}
-
-              {filteredLogs.map((log, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedUser(log)}
-                  className="w-full text-left p-4 border-b border-zinc-800 hover:bg-zinc-800 transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-lg">
-                        {log.username}
-                      </div>
-
-                      <div className="text-zinc-400 text-sm">
-                        {log.displayName}
-                      </div>
-                    </div>
-
-                    <div className="text-right text-sm text-zinc-500">
-                      <div>{log.execCount} Executes</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-6 h-[80vh] overflow-y-auto">
-            {!selectedUser && (
-              <div className="h-full flex items-center justify-center text-zinc-500 text-xl">
-                Wähle einen Nutzer aus
-              </div>
-            )}
-
-            {selectedUser && (
+        <div className="min-h-screen bg-black text-white p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
               <div>
-                <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
-                  <div className="flex items-center gap-4">
-                      <img
-                        src={selectedUser.avatarUrl}
-                        className="w-20 h-20 rounded-2xl border border-zinc-700"
-                      />
+                <h1 className="text-4xl font-bold">Roblox Execute Dashboard</h1>
+                <p className="text-zinc-400 mt-1">JSON Logs durchsuchen und Nutzer verwalten</p>
+              </div>
+              <label className="bg-white text-black px-5 py-3 rounded-2xl cursor-pointer font-semibold hover:scale-105 transition">
+                ZIP oder Ordner hochladen
+                <input
+                  type="file"
+                  accept=".json,.zip"
+                  webkitdirectory="true"
+                  multiple
+                  className="hidden"
+                  onChange={handleFolderUpload}
+                />
+              </label>
+            </div>
 
-                      <div>
-                        <h2 className="text-3xl font-bold">
-                      {selectedUser.username}
-                    </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <StatCard title="Geladene Dateien" value={stats.totalFiles} />
+              <StatCard title="Eindeutige Nutzer" value={stats.uniqueUsers} />
+              <StatCard title="Logs insgesamt" value={logs.reduce((acc, log) => acc + log.rawLogs.length, 0)} />
+            </div>
 
-                    <p className="text-zinc-400 mt-1">
-                          {selectedUser.displayName}
-                        </p>
+            <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
+              {/* Linke Spalte: Nutzerliste */}
+              <div className="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden h-[80vh] flex flex-col">
+                <div className="p-4 border-b border-zinc-800">
+                  <input
+                    type="text"
+                    placeholder="Nach Username, UserID oder IP suchen..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 outline-none"
+                  />
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {loading && <div className="p-6 text-zinc-400">Dateien werden geladen...</div>}
+                  {!loading && filteredLogs.length === 0 && (
+                    <div className="p-6 text-zinc-500">Keine Logs gefunden.</div>
+                  )}
+                  {filteredLogs.map((log, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedUser(log)}
+                      className="w-full text-left p-4 border-b border-zinc-800 hover:bg-zinc-800 transition"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-lg">{log.username}</div>
+                          <div className="text-zinc-400 text-sm">{log.displayName}</div>
+                        </div>
+                        <div className="text-right text-sm text-zinc-500">
+                          <div>{log.execCount} Executes</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rechte Spalte: Detailansicht */}
+              <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-6 h-[80vh] overflow-y-auto">
+                {!selectedUser ? (
+                  <div className="h-full flex items-center justify-center text-zinc-500 text-xl">
+                    Wähle einen Nutzer aus
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={selectedUser.avatarUrl}
+                          className="w-20 h-20 rounded-2xl border border-zinc-700"
+                        />
+                        <div>
+                          <h2 className="text-3xl font-bold">{selectedUser.username}</h2>
+                          <p className="text-zinc-400 mt-1">{selectedUser.displayName}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 flex-wrap">
+                        <a
+                          href={selectedUser.profileUrl}
+                          target="_blank"
+                          className="bg-zinc-700 hover:bg-zinc-600 transition px-5 py-3 rounded-2xl font-semibold"
+                        >
+                          Roblox Profil
+                        </a>
+                        <button className="bg-red-600 hover:bg-red-500 transition px-5 py-3 rounded-2xl font-semibold">
+                          Nutzer bannen
+                        </button>
                       </div>
                     </div>
 
-                  <div className="flex gap-3 flex-wrap">
-                    <a
-                      href={selectedUser.profileUrl}
-                      target="_blank"
-                      className="bg-zinc-700 hover:bg-zinc-600 transition px-5 py-3 rounded-2xl font-semibold"
-                    >
-                      Roblox Profil
-                    </a>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <InfoCard title="User ID" value={selectedUser.userId} />
+                      <InfoCard title="Land" value={`${selectedUser.country} (${selectedUser.countryCode})`} />
+                      <InfoCard title="Executes" value={selectedUser.execCount} />
+                      <InfoCard title="Letzter Log" value={selectedUser.lastSeen} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <InfoCard title="IPs" value={selectedUser.ips.join(', ')} />
+                      <InfoCard title="Client IDs" value={selectedUser.clientIds.join(', ')} />
+                      <InfoCard title="Game IDs" value={selectedUser.gameIds.join(', ')} />
+                      <InfoCard title="Scripts" value={selectedUser.scripts.join(', ')} />
+                    </div>
 
-                    <button className="bg-red-600 hover:bg-red-500 transition px-5 py-3 rounded-2xl font-semibold">
-                      Nutzer bannen
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <InfoCard title="User ID" value={selectedUser.userId} />
-                  <InfoCard title="Land" value={`${selectedUser.country} (${selectedUser.countryCode})`} />
-                  <InfoCard title="Executes" value={selectedUser.execCount} />
-                  <InfoCard title="Letzter Log" value={selectedUser.lastSeen} />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <InfoCard title="IPs" value={selectedUser.ips.join(', ')} />
-                  <InfoCard title="Client IDs" value={selectedUser.clientIds.join(', ')} />
-                  <InfoCard title="Game IDs" value={selectedUser.gameIds.join(', ')} />
-                  <InfoCard title="Scripts" value={selectedUser.scripts.join(', ')} />
-                </div>
-
-                <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
-                  <h3 className="text-xl font-bold mb-4">
-                    Executed Scripts
-                  </h3>
-
-                  {Array.isArray(selectedUser.scripts) && selectedUser.scripts.length > 0 ? (
-                    <div className="space-y-3">
-                      {selectedUser.scripts.map((script, i) => (
-                        <div
-                          key={i}
-                          className="bg-zinc-900 rounded-2xl p-4 border border-zinc-700 break-all"
-                        >
-                          {typeof script === 'string'
-                            ? script
-                            : JSON.stringify(script, null, 2)}
+                    {/* Executed Scripts */}
+                    <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
+                      <h3 className="text-xl font-bold mb-4">Executed Scripts</h3>
+                      {Array.isArray(selectedUser.scripts) && selectedUser.scripts.length > 0 ? (
+                        <div className="space-y-3">
+                          {selectedUser.scripts.map((script, i) => (
+                            <div key={i} className="bg-zinc-900 rounded-2xl p-4 border border-zinc-700 break-all">
+                              {typeof script === 'string' ? script : JSON.stringify(script, null, 2)}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      ) : (
+                        <div className="text-zinc-500">Keine Scripts gefunden.</div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-zinc-500">
-                      Keine Scripts gefunden.
-                    </div>
-                  )}
-                </div>
 
-                <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
-                  <h3 className="text-xl font-bold mb-4">
-                    Mögliche Alt Accounts
-                  </h3>
-
-                  {getAltAccounts(selectedUser).length > 0 ? (
-                    <div className="space-y-3">
-                      {getAltAccounts(selectedUser).map((account, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setSelectedUser(account)}
-                          className="w-full bg-zinc-900 hover:bg-zinc-950 transition border border-zinc-700 rounded-2xl p-4 text-left"
-                        >
-                          <div className="flex items-center gap-4">
-                            <img
-                              src={account.avatarUrl}
-                              className="w-14 h-14 rounded-xl"
-                            />
-
-                            <div className="flex-1">
-                              <div className="font-bold text-lg">
-                                {account.username}
+                    {/* Alt Accounts */}
+                    <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
+                      <h3 className="text-xl font-bold mb-4">Mögliche Alt Accounts</h3>
+                      {getAltAccounts(selectedUser).length > 0 ? (
+                        <div className="space-y-3">
+                          {getAltAccounts(selectedUser).map((account, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setSelectedUser(account)}
+                              className="w-full bg-zinc-900 hover:bg-zinc-950 transition border border-zinc-700 rounded-2xl p-4 text-left"
+                            >
+                              <div className="flex items-center gap-4">
+                                <img src={account.avatarUrl} className="w-14 h-14 rounded-xl" />
+                                <div className="flex-1">
+                                  <div className="font-bold text-lg">{account.username}</div>
+                                  <div className="text-zinc-400 text-sm">{account.displayName}</div>
+                                </div>
+                                <div className="text-right text-sm text-zinc-500">
+                                  <div>{account.execCount} Executes</div>
+                                </div>
                               </div>
-
-                              <div className="text-zinc-400 text-sm">
-                                {account.displayName}
+                              <div className="mt-3 text-sm text-red-400 break-all">
+                                Gemeinsame IPs: {account.ips.filter(ip => selectedUser.ips.includes(ip)).join(', ')}
                               </div>
-                            </div>
-
-                            <div className="text-right text-sm text-zinc-500">
-                              <div>{account.execCount} Executes</div>
-                            </div>
-                          </div>
-
-                          <div className="mt-3 text-sm text-red-400 break-all">
-                            Gemeinsame IPs: {
-                              account.ips.filter((ip) =>
-                                selectedUser.ips.includes(ip)
-                              ).join(', ')
-                            }
-                          </div>
-                        </button>
-                      ))}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-zinc-500">Keine weiteren Accounts mit gleicher IP gefunden.</div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-zinc-500">
-                      Keine weiteren Accounts mit gleicher IP gefunden.
+
+                    {/* NEU: Verknüpfte User IDs */}
+                    <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
+                      <h3 className="text-xl font-bold mb-4">Verknüpfte User IDs</h3>
+                      <ul className="space-y-2">
+                        <li className="bg-zinc-900 rounded-xl p-3 border border-zinc-700 font-semibold">
+                          Main Account: {selectedUser.userId}
+                        </li>
+                        {getAltAccounts(selectedUser).map((alt, idx) => (
+                          <li key={idx} className="bg-zinc-900 rounded-xl p-3 border border-zinc-700">
+                            {alt.userId}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  )}
-                </div>
 
-                {/* NEU: Liste aller verknüpften User IDs */}
-                <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
-                  <h3 className="text-xl font-bold mb-4">
-                    Verknüpfte User IDs
-                  </h3>
-                  <ul className="space-y-2">
-                    <li className="bg-zinc-900 rounded-xl p-3 border border-zinc-700 font-semibold">
-                      Main Account: {selectedUser.userId}
-                    </li>
-                    {getAltAccounts(selectedUser).map((alt, idx) => (
-                      <li key={idx} className="bg-zinc-900 rounded-xl p-3 border border-zinc-700">
-                        {alt.userId}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="bg-zinc-800 rounded-3xl p-5">
-                  <h3 className="text-xl font-bold mb-4">
-                    Raw JSON
-                  </h3>
-
-                  <pre className="bg-black rounded-2xl p-4 overflow-x-auto text-sm text-zinc-300 whitespace-pre-wrap">
-                    {JSON.stringify(selectedUser.rawLogs, null, 2)}
-                  </pre>
-                </div>
+                    {/* Raw JSON */}
+                    <div className="bg-zinc-800 rounded-3xl p-5">
+                      <h3 className="text-xl font-bold mb-4">Raw JSON</h3>
+                      <pre className="bg-black rounded-2xl p-4 overflow-x-auto text-sm text-zinc-300 whitespace-pre-wrap">
+                        {JSON.stringify(selectedUser.rawLogs, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
+      );
+    }
 
-function StatCard({ title, value }) {
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-      <div className="text-zinc-400 text-sm mb-2">{title}</div>
-      <div className="text-3xl font-bold">{value}</div>
-    </div>
-  );
-}
+    function StatCard({ title, value }) {
+      return (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+          <div className="text-zinc-400 text-sm mb-2">{title}</div>
+          <div className="text-3xl font-bold">{value}</div>
+        </div>
+      );
+    }
 
-function InfoCard({ title, value }) {
-  return (
-    <div className="bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
-      <div className="text-zinc-400 text-sm mb-1">{title}</div>
-      <div className="font-semibold break-all">{String(value)}</div>
-    </div>
-  );
-}
+    function InfoCard({ title, value }) {
+      return (
+        <div className="bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
+          <div className="text-zinc-400 text-sm mb-1">{title}</div>
+          <div className="font-semibold break-all">{String(value)}</div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<RobloxLogDashboard />, document.getElementById('root'));
+  </script>
+</body>
+</html>
