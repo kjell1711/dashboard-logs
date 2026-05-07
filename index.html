@@ -4,18 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Roblox Execute Dashboard</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-black text-white">
   <div id="root"></div>
 
-  <!-- React & ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- Babel für JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
@@ -27,6 +23,12 @@
       const [search, setSearch] = useState("");
       const [loading, setLoading] = useState(false);
       const [stats, setStats] = useState({ totalFiles: 0, uniqueUsers: 0 });
+      const [showAllUsersModal, setShowAllUsersModal] = useState(false);
+
+      // Alle eindeutigen User IDs, sortiert oder unsortiert – hier einfach so wie sie in den Logs auftauchen
+      const allUniqueUserIds = useMemo(() => {
+        return [...new Set(logs.map(log => log.userId))];
+      }, [logs]);
 
       const processJsonFiles = async (jsonFiles) => {
         setLoading(true);
@@ -145,17 +147,25 @@
                 <h1 className="text-4xl font-bold">Roblox Execute Dashboard</h1>
                 <p className="text-zinc-400 mt-1">JSON Logs durchsuchen und Nutzer verwalten</p>
               </div>
-              <label className="bg-white text-black px-5 py-3 rounded-2xl cursor-pointer font-semibold hover:scale-105 transition">
-                ZIP oder Ordner hochladen
-                <input
-                  type="file"
-                  accept=".json,.zip"
-                  webkitdirectory="true"
-                  multiple
-                  className="hidden"
-                  onChange={handleFolderUpload}
-                />
-              </label>
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => setShowAllUsersModal(true)}
+                  className="bg-zinc-700 hover:bg-zinc-600 text-white px-5 py-3 rounded-2xl font-semibold transition"
+                >
+                  ALLE USER
+                </button>
+                <label className="bg-white text-black px-5 py-3 rounded-2xl cursor-pointer font-semibold hover:scale-105 transition">
+                  ZIP oder Ordner hochladen
+                  <input
+                    type="file"
+                    accept=".json,.zip"
+                    webkitdirectory="true"
+                    multiple
+                    className="hidden"
+                    onChange={handleFolderUpload}
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -165,7 +175,7 @@
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
-              {/* Linke Spalte: Nutzerliste */}
+              {/* Linke Spalte */}
               <div className="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden h-[80vh] flex flex-col">
                 <div className="p-4 border-b border-zinc-800">
                   <input
@@ -201,7 +211,7 @@
                 </div>
               </div>
 
-              {/* Rechte Spalte: Detailansicht */}
+              {/* Rechte Spalte */}
               <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-6 h-[80vh] overflow-y-auto">
                 {!selectedUser ? (
                   <div className="h-full flex items-center justify-center text-zinc-500 text-xl">
@@ -211,10 +221,7 @@
                   <div>
                     <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
                       <div className="flex items-center gap-4">
-                        <img
-                          src={selectedUser.avatarUrl}
-                          className="w-20 h-20 rounded-2xl border border-zinc-700"
-                        />
+                        <img src={selectedUser.avatarUrl} className="w-20 h-20 rounded-2xl border border-zinc-700" />
                         <div>
                           <h2 className="text-3xl font-bold">{selectedUser.username}</h2>
                           <p className="text-zinc-400 mt-1">{selectedUser.displayName}</p>
@@ -247,7 +254,6 @@
                       <InfoCard title="Scripts" value={selectedUser.scripts.join(', ')} />
                     </div>
 
-                    {/* Executed Scripts */}
                     <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
                       <h3 className="text-xl font-bold mb-4">Executed Scripts</h3>
                       {Array.isArray(selectedUser.scripts) && selectedUser.scripts.length > 0 ? (
@@ -263,7 +269,6 @@
                       )}
                     </div>
 
-                    {/* Alt Accounts */}
                     <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
                       <h3 className="text-xl font-bold mb-4">Mögliche Alt Accounts</h3>
                       {getAltAccounts(selectedUser).length > 0 ? (
@@ -295,7 +300,6 @@
                       )}
                     </div>
 
-                    {/* NEU: Verknüpfte User IDs */}
                     <div className="bg-zinc-800 rounded-3xl p-5 mb-6">
                       <h3 className="text-xl font-bold mb-4">Verknüpfte User IDs</h3>
                       <ul className="space-y-2">
@@ -310,7 +314,6 @@
                       </ul>
                     </div>
 
-                    {/* Raw JSON */}
                     <div className="bg-zinc-800 rounded-3xl p-5">
                       <h3 className="text-xl font-bold mb-4">Raw JSON</h3>
                       <pre className="bg-black rounded-2xl p-4 overflow-x-auto text-sm text-zinc-300 whitespace-pre-wrap">
@@ -322,6 +325,40 @@
               </div>
             </div>
           </div>
+
+          {/* MODAL "ALLE USER" */}
+          {showAllUsersModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70"
+              onClick={() => setShowAllUsersModal(false)}
+            >
+              <div
+                className="bg-zinc-900 border border-zinc-700 rounded-3xl w-full max-w-md mx-4 p-6 max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold">Alle User IDs</h2>
+                  <button
+                    onClick={() => setShowAllUsersModal(false)}
+                    className="text-zinc-400 hover:text-white text-2xl leading-none"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {allUniqueUserIds.length > 0 ? (
+                    allUniqueUserIds.map((id, idx) => (
+                      <div key={idx} className="text-zinc-300 font-mono text-sm py-1">
+                        {id}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-zinc-500">Keine User IDs geladen</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
